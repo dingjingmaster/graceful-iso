@@ -5,7 +5,7 @@ set -e -u
 # 配置环境
 umask 0022
 export LANG="C"
-export SOUCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-"$(date +%s)"}"
+export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-"$(date +%s)"}"
 
 # 镜像相关
 app_name="${0##*/}"
@@ -62,7 +62,7 @@ _msg_error()
     local _error="${2}"
     printf '[%s] ERROR: %s\n' "${app_name}" "${_msg}" >&2
     if (( _error > 0 )); then
-        exit "${error}"
+        exit "${_error}"
     fi
 }
 
