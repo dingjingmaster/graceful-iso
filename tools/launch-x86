@@ -2,9 +2,7 @@
 
 . "$(cd $(dirname $0); pwd)/common"
 
-iso_file="$(echo $(realpath -q -e $(find ${work_dir}/out/ -name '*.iso' -print0)) | tr -d '\0')"
-
-echo "${work_dir}"
+iso_file="$(echo $(realpath -q -e $(find ${work_dir}/out/ -name '*.iso' -print)) | tr -d '\0')"
 
 if [[ ! -f ${iso_file} ]]; then
     _msg_error "没有生成镜像文件,无法启动虚拟机测试 ..." 1
