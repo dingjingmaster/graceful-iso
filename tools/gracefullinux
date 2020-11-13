@@ -880,11 +880,12 @@ fi
 #    _usage 1
 #fi
 #profile="$(realpath -- "${1}")"
-profile=$(dirname $(dirname $(realpath -- $0)))
+profile=$(dirname $(dirname $(realpath -- $0)))             # 脚本所在项目的根目录
+
 airootfs_dir="${work_dir}/airootfs"
 isofs_dir="${work_dir}/iso"
 
-#_local_package                                          # 添加本地缓冲的软件包
+#_local_package                                             # TODO:// 添加本地缓冲的软件包,把项目常用的包缓冲到本地，反复利用
    
 # Set directory path defaults for legacy commands
 _read_profile
