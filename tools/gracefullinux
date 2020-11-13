@@ -17,7 +17,7 @@ quiet="y"
 work_dir="${work_dir}/work/"
 out_dir="out"
 img_name="${app_name}.iso"
-gpg_key=""
+gpg_key="18B65970A361B77D6C7C67C29EE375D12E7A3EB1"
 override_gpg_key=""
 
 # 默认配置
@@ -42,6 +42,15 @@ airootfs_image_tool_options=('-comp' 'xz')
 # 用到的全局变量
 airootfs_dir=""
 isofs_dir=""
+
+_clean_space()
+{
+    _msg_warning "开始清除 ${work_dir}/out 镜像文件 ..."
+    if [ -e "${work_dir}/out" ]; then
+        rm -rf "${work_dir}/out"
+    fi
+    _msg_warning "清除 ${work_dir}/out 镜像文件完成!!!"
+}
 
 _local_package()
 {
@@ -885,6 +894,7 @@ profile=$(dirname $(dirname $(realpath -- $0)))             # 脚本所在项目
 airootfs_dir="${work_dir}/airootfs"
 isofs_dir="${work_dir}/iso"
 
+_clean_space                                                # 清空上次生成的 ISO
 #_local_package                                             # TODO:// 添加本地缓冲的软件包,把项目常用的包缓冲到本地，反复利用
    
 # Set directory path defaults for legacy commands
