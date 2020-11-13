@@ -9,9 +9,9 @@ _msg_info()
 {
     local _msg="${1}"
     if [[ ${app_name} == '' ]]; then
-        [[ "${quiet}" == "y" ]] || printf '\033[32m信息\033[0m %s\n' "${_msg}"
+        [[ "${quiet}" == "y" ]] || printf '\033[32m信息: %s\033[0m\n' "${_msg}"
     else
-        [[ "${quiet}" == "y" ]] || printf '\033[32m[%s] 信息\033[0m %s\n' "${app_name}" "${_msg}"
+        [[ "${quiet}" == "y" ]] || printf '\033[32m[%s] 信息: %s\033[0m\n' "${app_name}" "${_msg}"
     fi
 }
 
@@ -20,9 +20,9 @@ _msg_warning()
 {
     local _msg="${1}"
     if [[ ${app_name} == '' ]]; then
-        printf '\033[41m警告\033[0m %s\n' "${_msg}" >&2
+        printf '\033[41m警告: %s\033[0m\n' "${_msg}" >&2
     else
-        printf '\033[41m[%s] 警告\033[0m %s\n' "${app_name}" "${_msg}" >&2
+        printf '\033[41m[%s] 警告: %s\033[0m\n' "${app_name}" "${_msg}" >&2
     fi
 }
 
@@ -32,9 +32,9 @@ _msg_error()
     local _msg="${1}"
     local _error="${2}"
     if [[ ${app_name} == '' ]]; then
-        printf '\033[31m错误\031[0m %s\n' "${_msg}" >&2
+        printf '\033[31m错误: %s\033[0m\n' "${_msg}" >&2
     else
-        printf '\033[31m[%s] 错误\031[0m %s\n' "${app_name}" "${_msg}" >&2
+        printf '\033[31m[%s] 错误: %s\033[0m\n' "${app_name}" "${_msg}" >&2
     fi
 
     if (( _error > 0 )); then
@@ -44,5 +44,5 @@ _msg_error()
 #######################################################################################################
 
 # 輸出脚本定义的变量
-_msg_info " 工作目录:       ${work_dir}"
+#_msg_info " 工作目录:       ${work_dir}"
 

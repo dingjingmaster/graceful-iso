@@ -750,7 +750,7 @@ _read_profile()
     if [[ ! -d "${profile}" ]]; then
         _msg_error "'${profile}' 配置文件不存在!" 1
     elif [[ ! -e "${profile}/profiledef.sh" ]]; then
-        _msg_error "'${profile}' 下没有 'profiledef.sh' 文件!" 1
+        _msg_error "'${profile}' 文件夹下没有 'profiledef.sh' 文件!" 1
     else
         cd -- "${profile}"
 
@@ -868,20 +868,19 @@ while getopts 'p:r:C:L:P:A:D:w:o:g:vh?' arg; do
             ;;
     esac
 done
-   
-shift $((OPTIND - 1))
-   
-if (( $# < 1 )); then
-    _msg_error "未指定配置文件" 0
-    _usage 1
-fi
-   
+
 if (( EUID != 0 )); then
     _msg_error "${app_name} 必须以 root 运行." 1
 fi
    
-# get the absolute path representation of the first non-option argument
-profile="$(realpath -- "${1}")"
+# 获取镜像制作根目录
+#shift $((OPTIND - 1))
+#if (( $# < 1 )); then
+#    _msg_error "未指定配置文件" 0
+#    _usage 1
+#fi
+#profile="$(realpath -- "${1}")"
+profile=$(dirname $(dirname $(realpath -- $0)))
 airootfs_dir="${work_dir}/airootfs"
 isofs_dir="${work_dir}/iso"
 
