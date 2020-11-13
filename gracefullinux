@@ -45,14 +45,14 @@ isofs_dir=""
 _msg_info() 
 {
     local _msg="${1}"
-    [[ "${quiet}" == "y" ]] || printf '[%s] INFO: %s\n' "${app_name}" "${_msg}"
+    [[ "${quiet}" == "y" ]] || printf '[%s] 信息: %s\n' "${app_name}" "${_msg}"
 }
 
 # 输出警告
 _msg_warning()
 {
     local _msg="${1}"
-    printf '[%s] WARNING: %s\n' "${app_name}" "${_msg}" >&2
+    printf '[%s] 警告: %s\n' "${app_name}" "${_msg}" >&2
 }
 
 # 输出错误
@@ -60,10 +60,19 @@ _msg_error()
 {
     local _msg="${1}"
     local _error="${2}"
-    printf '[%s] ERROR: %s\n' "${app_name}" "${_msg}" >&2
+    printf '[%s] 错误: %s\n' "${app_name}" "${_msg}" >&2
     if (( _error > 0 )); then
         exit "${_error}"
     fi
+}
+
+_local_package()
+{
+    _msg_info "开始搜索本地缓冲的软件包 ..."
+    if [[ -d '/data/gracefullinux-packages' ]]; then
+        ln -s '/data/gracefullinux-package' '${work_dir}/packages'
+    fi
+    _msg_info "搜索本地缓冲的软件包完成!!!"
 }
 
 _chroot_init()
@@ -564,7 +573,7 @@ _make_boot_uefi-x64.systemd-boot.esp()
     # The FAT image must be created with mkfs.fat not mformat, as some systems have issues with mformat made images:
     # https://lists.gnu.org/archive/html/grub-devel/2019-04/msg00099.html
     [[ -e "${work_dir}/efiboot.img" ]] && rm -f -- "${work_dir}/efiboot.img"
-    _msg_info "Creating FAT image of size: ${efiboot_imgsize} KiB..."
+    _msg_info "正在创建 FAT 镜像, 大小为: ${efiboot_imgsize} KiB..."
     mkfs.fat -C -n ARCHISO_EFI "${work_dir}/efiboot.img" "$efiboot_imgsize"
 
     mmd -i "${work_dir}/efiboot.img" ::/EFI ::/EFI/BOOT
@@ -608,7 +617,7 @@ _make_prepare()
     elif [[ "${airootfs_image_type}" == "ext4+squashfs" ]]; then # prepare airootfs.sfs for dm-snapshot usage
         _run_once _mkairootfs_img
     else
-        _msg_error "Unsupported image type: '${airootfs_image_type}'" 1
+        _msg_error "不支持的镜像类型: '${airootfs_image_type}'" 1
     fi
     
     _mkchecksum
@@ -635,13 +644,13 @@ _make_iso()
         # SYSLINUX El Torito
         if [[ " ${bootmodes[*]} " =~ ' bios.syslinux.eltorito ' ]]; then
             if [[ ! -f "${isofs_dir}/isolinux/isolinux.bin" ]]; then
-                _msg_error "The file '${isofs_dir}/isolinux/isolinux.bin' does not exist." 1
+                _msg_error "'${isofs_dir}/isolinux/isolinux.bin' 文件不存在." 1
             fi
    
             # SYSLINUX MBR
             if [[ " ${bootmodes[*]} " =~ ' bios.syslinux.mbr ' ]]; then
                 if [[ ! -f "${isofs_dir}/isolinux/isohdpfx.bin" ]]; then
-                    _msg_error "The file '${isofs_dir}/isolinux/isohdpfx.bin' does not exist." 1
+                    _msg_error "'${isofs_dir}/isolinux/isohdpfx.bin' 文件不存在." 1
                 fi
 
                 xorrisofs_options+=(
@@ -673,7 +682,7 @@ _make_iso()
                 '-no-emul-boot' '-boot-load-size' '4' '-boot-info-table'
             )
         else
-            _msg_error "Using 'bios.syslinux.mbr' boot mode without 'bios.syslinux.eltorito' is not supported." 1
+            _msg_error "'bios.syslinux.eltorito' 引导模式不支持,正在使用 'bios.syslinux.mbr' 引导模式." 1
         fi
     fi
 
@@ -681,7 +690,7 @@ _make_iso()
     # shellcheck disable=SC2076
     if [[ " ${bootmodes[*]} " =~ ' uefi-x64.systemd-boot.' ]]; then
         if [[ ! -f "${work_dir}/efiboot.img" ]]; then
-            _msg_error "The file '${work_dir}/efiboot.img' does not exist." 1
+            _msg_error "'${work_dir}/efiboot.img' 文件不存在." 1
         fi
 
         [[ -e "${isofs_dir}/EFI/archiso" ]] && rm -rf -- "${isofs_dir}/EFI/archiso"
@@ -741,7 +750,7 @@ _make_iso()
         -volid "${iso_label}" \
         -appid "${iso_application}" \
         -publisher "${iso_publisher}" \
-        -preparer "prepared by ${app_name}" \
+        -preparer "准备 ${app_name}" \
         "${xorrisofs_options[@]}" \
         -output "${out_dir}/${img_name}" \
         "${isofs_dir}/"
@@ -754,13 +763,13 @@ _make_iso()
 _read_profile()
 {
     if [[ -z "${profile}" ]]; then
-        _msg_error "No profile specified!" 1
+        _msg_error "未找到配置文件!" 1
     fi
 
     if [[ ! -d "${profile}" ]]; then
-        _msg_error "Profile '${profile}' does not exist!" 1
+        _msg_error "'${profile}' 配置文件不存在!" 1
     elif [[ ! -e "${profile}/profiledef.sh" ]]; then
-        _msg_error "Profile '${profile}' is missing 'profiledef.sh'!" 1
+        _msg_error "'${profile}' 下没有 'profiledef.sh' 文件!" 1
     else
         cd -- "${profile}"
 
@@ -773,7 +782,7 @@ _read_profile()
         pacman_conf="$(realpath -- "${pacman_conf}")"
 
         # Enumerate packages
-        [[ -e "${packages}" ]] || _msg_error "File '${packages}' does not exist!" 1
+        [[ -e "${packages}" ]] || _msg_error "'${packages}' 文件不存在!" 1
         mapfile -t pkg_list < <(sed '/^[[:blank:]]*#.*/d;s/#.*//;/^[[:blank:]]*$/d' "${packages}")
 
         cd -- "${OLDPWD}"
@@ -894,6 +903,8 @@ fi
 profile="$(realpath -- "${1}")"
 airootfs_dir="${work_dir}/airootfs"
 isofs_dir="${work_dir}/iso"
+
+_local_package                                          # 添加本地缓冲的软件包
    
 # Set directory path defaults for legacy commands
 _read_profile
