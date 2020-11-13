@@ -10,11 +10,11 @@ export LANG="C"
 export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-"$(date +%s)"}"
 
 # 镜像相关
-app_name="${0##*/}"
+app_name="gracefullinux"
 pkg_list=()
 run_cmd=""
 quiet="y"
-work_dir="work"
+work_dir="${work_dir}/work/"
 out_dir="out"
 img_name="${app_name}.iso"
 gpg_key=""
@@ -46,8 +46,12 @@ isofs_dir=""
 _local_package()
 {
     _msg_info "开始搜索本地缓冲的软件包 ..."
-    if [[ -d '/data/gracefullinux-packages' ]]; then
-        ln -s '/data/gracefullinux-package' '${work_dir}/packages'
+    if [[ -e "${work_dir}/packages" ]]; then
+        rm -rf "${work_dir}/packages"
+    fi
+
+    if [[ -d "/data/gracefullinux-packages" ]]; then
+        ln -s "/data/gracefullinux-packages" "${work_dir}/packages"
     fi
     _msg_info "搜索本地缓冲的软件包完成!!!"
 }
@@ -881,7 +885,7 @@ profile="$(realpath -- "${1}")"
 airootfs_dir="${work_dir}/airootfs"
 isofs_dir="${work_dir}/iso"
 
-_local_package                                          # 添加本地缓冲的软件包
+#_local_package                                          # 添加本地缓冲的软件包
    
 # Set directory path defaults for legacy commands
 _read_profile
