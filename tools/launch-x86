@@ -1,0 +1,20 @@
+#!/bin/bash
+
+. "$(cd $(dirname $0); pwd)/common"
+
+echo ${work_dir}
+
+iso_file=""
+
+#qemu-system-x86-64 \
+#    -accel kvm \
+#    -boot order=d,menu=on,reboot-timeout=5000 \
+#    -m size=4096,slots=0,maxmem=$(4096*1024*1024) \
+#    -k en \
+#    -name gracefullinux,process=gracefullinux_0\
+#    -drive file=${iso_file},media=cdrom,readonly=on \
+#    -display sd1 \
+#    -vga virtio \
+#    -enable-kvm \
+#    -no-reboot \
+#    -no-shutdown \

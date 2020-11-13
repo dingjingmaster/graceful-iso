@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# 常用变量
+work_dir=$(dirname $(dirname $(realpath -- $0)))
