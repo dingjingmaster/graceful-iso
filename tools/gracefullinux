@@ -17,7 +17,7 @@ quiet="y"
 work_dir="${work_dir}/work/"
 out_dir="out"
 img_name="${app_name}.iso"
-gpg_key="18B65970A361B77D6C7C67C29EE375D12E7A3EB1"
+gpg_key="dingjing@live.cn"
 override_gpg_key=""
 
 # 默认配置
