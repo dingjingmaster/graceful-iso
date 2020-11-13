@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. "$(cd $(dirname $0); pwd)/common"
+
 set -e -u
 
 # 配置环境
@@ -40,31 +42,6 @@ airootfs_image_tool_options=('-comp' 'xz')
 # 用到的全局变量
 airootfs_dir=""
 isofs_dir=""
-
-# 输出信息
-_msg_info() 
-{
-    local _msg="${1}"
-    [[ "${quiet}" == "y" ]] || printf '[%s] 信息: %s\n' "${app_name}" "${_msg}"
-}
-
-# 输出警告
-_msg_warning()
-{
-    local _msg="${1}"
-    printf '[%s] 警告: %s\n' "${app_name}" "${_msg}" >&2
-}
-
-# 输出错误
-_msg_error()
-{
-    local _msg="${1}"
-    local _error="${2}"
-    printf '[%s] 错误: %s\n' "${app_name}" "${_msg}" >&2
-    if (( _error > 0 )); then
-        exit "${_error}"
-    fi
-}
 
 _local_package()
 {

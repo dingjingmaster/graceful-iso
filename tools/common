@@ -2,3 +2,47 @@
 
 # 常用变量
 work_dir=$(dirname $(dirname $(realpath -- $0)))
+
+############################################## 常用函數 ###############################################
+# 输出信息
+_msg_info() 
+{
+    local _msg="${1}"
+    if [[ ${app_name} == '' ]]; then
+        [[ "${quiet}" == "y" ]] || printf '信息: %s\n' "${_msg}"
+    else
+        [[ "${quiet}" == "y" ]] || printf '[%s] 信息: %s\n' "${app_name}" "${_msg}"
+    fi
+}
+
+# 输出警告
+_msg_warning()
+{
+    local _msg="${1}"
+    if [[ ${app_name} == '' ]]; then
+        printf '警告: %s\n' "${_msg}" >&2
+    else
+        printf '[%s] 警告: %s\n' "${app_name}" "${_msg}" >&2
+    fi
+}
+
+# 输出错误
+_msg_error()
+{
+    local _msg="${1}"
+    local _error="${2}"
+    if [[ ${app_name} == '' ]]; then
+        printf '错误: %s\n' "${_msg}" >&2
+    else
+        printf '[%s] 错误: %s\n' "${app_name}" "${_msg}" >&2
+    fi
+
+    if (( _error > 0 )); then
+        exit "${_error}"
+    fi
+}
+#######################################################################################################
+
+# 輸出脚本定义的变量
+_msg_info " 工作目录:       ${work_dir}"
+

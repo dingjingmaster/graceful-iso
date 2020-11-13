@@ -2,19 +2,22 @@
 
 . "$(cd $(dirname $0); pwd)/common"
 
-echo ${work_dir}
+iso_file="$(echo $(realpath -q -e $(find ${work_dir}/out/ -name '*.iso' -print0)) | tr -d '\0')"
 
-iso_file=""
+echo "${work_dir}"
 
-#qemu-system-x86-64 \
-#    -accel kvm \
-#    -boot order=d,menu=on,reboot-timeout=5000 \
-#    -m size=4096,slots=0,maxmem=$(4096*1024*1024) \
-#    -k en \
-#    -name gracefullinux,process=gracefullinux_0\
-#    -drive file=${iso_file},media=cdrom,readonly=on \
-#    -display sd1 \
-#    -vga virtio \
-#    -enable-kvm \
-#    -no-reboot \
-#    -no-shutdown \
+if [[ ! -f ${iso_file} ]]; then
+    _msg_error "没有生成镜像文件,无法启动虚拟机测试 ..." 1
+fi
+
+qemu-system-x86_64 \
+    -boot order=d,menu=on,reboot-timeout=5000 \
+    -m size=4096,slots=0,maxmem=$(( 4096*1024*1024 )) \
+    -k en \
+    -name gracefullinux,process=gracefullinux_0\
+    -drive file=${iso_file},media=cdrom,readonly=on \
+    -display sdl \
+    -vga virtio \
+    -enable-kvm \
+    -no-reboot \
+    -no-shutdown \
