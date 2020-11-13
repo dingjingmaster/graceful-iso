@@ -38,7 +38,8 @@ airootfs_image_type="squashfs"
 airootfs_image_tool_options=('-comp' 'xz')
 
 # 用到的全局变量
-airootfs_dir=""
+global airootfs_dir=""
+global isofs_dir=""
 
 # 输出信息
 _msg_info() 
@@ -807,91 +808,95 @@ _set_overrides()
     fi
 }
 
-_export_gpg_publickey() {
-      if [[ -n "${gpg_key}" ]]; then
-          gpg --batch --output "${work_dir}/pubkey.gpg" --export "${gpg_key}"
-      fi
-  }
+_export_gpg_publickey()
+{
+    if [[ -n "${gpg_key}" ]]; then
+        gpg --batch --output "${work_dir}/pubkey.gpg" --export "${gpg_key}"
+    fi
+}
 
+_make_pkglist()
+{
+    install -d -m 0755 -- "${isofs_dir}/${install_dir}"
+    _msg_info "在 live 环境下安装软件包 ..."
+    pacman -Q --sysroot "${airootfs_dir}" > "${isofs_dir}/${install_dir}/pkglist.${arch}.txt"
+    _msg_info "完成!!!"
+}
 
-  _make_pkglist() {
-      install -d -m 0755 -- "${isofs_dir}/${install_dir}"
-      _msg_info "Creating a list of installed packages on live-enviroment..."
-      pacman -Q --sysroot "${airootfs_dir}" > "${isofs_dir}/${install_dir}/pkglist.${arch}.txt"
-      _msg_info "Done!"
-  }
+_build_profile()
+{
+    # Set up essential directory paths
+    airootfs_dir="${work_dir}/${arch}/airootfs"
+    isofs_dir="${work_dir}/iso"
+    
+    # Set ISO file name
+    img_name="${iso_name}-${iso_version}-${arch}.iso"
 
-  _build_profile() {
-      # Set up essential directory paths
-      airootfs_dir="${work_dir}/${arch}/airootfs"
-      isofs_dir="${work_dir}/iso"
-      # Set ISO file name
-      img_name="${iso_name}-${iso_version}-${arch}.iso"
-      # Create working directory
-      [[ -d "${work_dir}" ]] || install -d -- "${work_dir}"
-      # Write build date to file or if the file exists, read it from there
-      if [[ -e "${work_dir}/build_date" ]]; then
-          SOURCE_DATE_EPOCH="$(<"${work_dir}/build_date")"
-      else
-          printf '%s\n' "$SOURCE_DATE_EPOCH" > "${work_dir}/build_date"
-      fi
+    # Create working directory
+    [[ -d "${work_dir}" ]] || install -d -- "${work_dir}"
+    
+    # Write build date to file or if the file exists, read it from there
+    if [[ -e "${work_dir}/build_date" ]]; then
+        SOURCE_DATE_EPOCH="$(<"${work_dir}/build_date")"
+    else
+        printf '%s\n' "$SOURCE_DATE_EPOCH" > "${work_dir}/build_date"
+    fi
+    
+    _show_config
+    _run_once _make_pacman_conf
+    _run_once _export_gpg_publickey
+    _run_once _make_custom_airootfs
+    _run_once _make_packages
+    _run_once _make_customize_airootfs
+    _run_once _make_pkglist
+    _make_bootmodes
+    _run_once _cleanup
+    _run_once _make_prepare
+    _run_once _make_iso
+}
 
-      _show_config
-      _run_once _make_pacman_conf
-      _run_once _export_gpg_publickey
-      _run_once _make_custom_airootfs
-      _run_once _make_packages
-      _run_once _make_customize_airootfs
-      _run_once _make_pkglist
-      _make_bootmodes
-      _run_once _cleanup
-      _run_once _make_prepare
-      _run_once _make_iso
-  }
-
-  while getopts 'p:r:C:L:P:A:D:w:o:g:vh?' arg; do
-      case "${arg}" in
-          p)
-              read -r -a opt_pkg_list <<< "${OPTARG}"
-              pkg_list+=("${opt_pkg_list[@]}")
-              ;;
-          r) run_cmd="${OPTARG}" ;;
-          C) override_pacman_conf="$(realpath -- "${OPTARG}")" ;;
-          L) override_iso_label="${OPTARG}" ;;
-          P) override_iso_publisher="${OPTARG}" ;;
-          A) override_iso_application="${OPTARG}" ;;
-          D) override_install_dir="${OPTARG}" ;;
-          w) work_dir="$(realpath -- "${OPTARG}")" ;;
-          o) out_dir="$(realpath -- "${OPTARG}")" ;;
-          g) override_gpg_key="${OPTARG}" ;;
-          v) quiet="n" ;;
-          h|?) _usage 0 ;;
-          *)
-              _msg_error "Invalid argument '${arg}'" 0
-              _usage 1
-              ;;
-      esac
-  done
+while getopts 'p:r:C:L:P:A:D:w:o:g:vh?' arg; do
+    case "${arg}" in
+        p)
+            read -r -a opt_pkg_list <<< "${OPTARG}"
+            pkg_list+=("${opt_pkg_list[@]}")
+            ;;
+        r) run_cmd="${OPTARG}" ;;
+        C) override_pacman_conf="$(realpath -- "${OPTARG}")" ;;
+        L) override_iso_label="${OPTARG}" ;;
+        P) override_iso_publisher="${OPTARG}" ;;
+        A) override_iso_application="${OPTARG}" ;;
+        D) override_install_dir="${OPTARG}" ;;
+        w) work_dir="$(realpath -- "${OPTARG}")" ;;
+        o) out_dir="$(realpath -- "${OPTARG}")" ;;
+        g) override_gpg_key="${OPTARG}" ;;
+        v) quiet="n" ;;
+        h|?) _usage 0 ;;
+        *)
+            _msg_error "无效的输入参数 '${arg}'" 0
+            _usage 1
+            ;;
+    esac
+done
    
-  shift $((OPTIND - 1))
+shift $((OPTIND - 1))
    
-  if (( $# < 1 )); then
-      _msg_error "No profile specified" 0
-      _usage 1
-  fi
+if (( $# < 1 )); then
+    _msg_error "未指定配置文件" 0
+    _usage 1
+fi
    
-  if (( EUID != 0 )); then
-      _msg_error "${app_name} must be run as root." 1
-  fi
+if (( EUID != 0 )); then
+    _msg_error "${app_name} 必须以 root 运行." 1
+fi
    
-  # get the absolute path representation of the first non-option argument
-  profile="$(realpath -- "${1}")"
+# get the absolute path representation of the first non-option argument
+profile="$(realpath -- "${1}")"
+airootfs_dir="${work_dir}/airootfs"
+isofs_dir="${work_dir}/iso"
    
-  # Set directory path defaults for legacy commands
-  airootfs_dir="${work_dir}/airootfs"
-  isofs_dir="${work_dir}/iso"
-  _read_profile
-  _set_overrides
-  _build_profile
-
+# Set directory path defaults for legacy commands
+_read_profile
+_set_overrides
+_build_profile
 
