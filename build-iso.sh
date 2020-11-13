@@ -38,8 +38,8 @@ airootfs_image_type="squashfs"
 airootfs_image_tool_options=('-comp' 'xz')
 
 # 用到的全局变量
-global airootfs_dir=""
-global isofs_dir=""
+airootfs_dir=""
+isofs_dir=""
 
 # 输出信息
 _msg_info() 
