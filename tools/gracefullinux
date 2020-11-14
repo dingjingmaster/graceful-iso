@@ -81,6 +81,7 @@ _mount_airootfs()
     trap "_umount_airootfs" EXIT HUB INT TERM
     install -d -m 0755 -- "${work_dir}/mnt/airootfs"
     _msg_info "正在把 '${airootfs_dir}.img' 挂载到 '${work_dir}/mnt/airootfs' ..."
+    _msg_info "mount -- ${airootfs_dir}.img ${work_dir}/mnt/airootfs"
     mount -- "${airootfs_dir}.img" "${work_dir}/mnt/airootfs"
     _msg_info "成功!!!"
 }
@@ -207,6 +208,7 @@ _mkairootfs_create_image()
         if [[ "${quiet}" == "y" ]]; then
             mksquashfs "$@" "${image_path}" -noappend "${airootfs_image_tool_options[@]}" -no-progress > /dev/null
         else
+            _msg_info "mksquashfs $@ ${image_path} -noappend ${airootfs_image_tool_options[@]}"
             mksquashfs "$@" "${image_path}" -noappend "${airootfs_image_tool_options[@]}"
         fi
     else
@@ -225,24 +227,30 @@ _mkairootfs_img()
     if [[ "${quiet}" == "y" ]]; then
         mkfs.ext4 -q -O '^has_journal,^resize_inode' -E 'lazy_itable_init=0' -m 0 -F -- "${airootfs_dir}.img" 32G
     else
+        _msg_info "mkfs.ext4 -O '^has_journal,^resize_inode' -E 'lazy_itable_init=0' -m 0 -F -- ${airootfs_dir}.img 32G"
         mkfs.ext4 -O '^has_journal,^resize_inode' -E 'lazy_itable_init=0' -m 0 -F -- "${airootfs_dir}.img" 32G
     fi
 
+    _msg_info "tune2fs -c 0 -i 0 -- ${airootfs_dir}.img > /dev/null"
     tune2fs -c 0 -i 0 -- "${airootfs_dir}.img" > /dev/null
     _msg_info "完成!!!"
 
     _mount_airootfs
     _msg_info "正在复制 '${airootfs_dir}/' 到 '${work_dir}/mnt/airootfs/'..."
+    _msg_info "cp -aT -- ${airootfs_dir}/  ${work_dir}/mnt/airootfs/"
     cp -aT -- "${airootfs_dir}/" "${work_dir}/mnt/airootfs/"
+    _msg_info "chown -- 0:0  ${work_dir}/mnt/airootfs/"
     chown -- 0:0 "${work_dir}/mnt/airootfs/"
     _msg_info "完成!!!"
     _umount_airootfs
 
     install -d -m 0755 -- "${isofs_dir}/${install_dir}/${arch}"
     _msg_info "正在创建 SquashFS 镜像, 可能需要花点时间 ..."
+    _msg_info "_mkairootfs_create_image ${airootfs_dir}.img"
     _mkairootfs_create_image "${airootfs_dir}.img"
     _msg_info "完成!!!"
 
+    _msg_info "rm -- ${airootfs_dir}.img"
     rm -- "${airootfs_dir}.img"
 }
 
@@ -261,8 +269,10 @@ _mkairootfs_sfs()
 _mkchecksum()
 {
     _msg_info "创建 sha512sum ..."
+    _msg_info "cd -- ${isofs_dir}/${install_dir}/${arch}"
     cd -- "${isofs_dir}/${install_dir}/${arch}"
     sha512sum airootfs.sfs > airootfs.sha512
+    _msg_info "cd -- ${OLDPWD}"
     cd -- "${OLDPWD}"
     _msg_info "完成!!!"
 }
@@ -270,8 +280,11 @@ _mkchecksum()
 _mksignature()
 {
     _msg_info "开始给 SquashFS 镜像签名 ..."
+    _msg_info "cd -- ${isofs_dir}/${install_dir}/${arch}"
     cd -- "${isofs_dir}/${install_dir}/${arch}"
+    _msg_info "gpg --detach-sign --default-key ${gpg_key} airootfs.sfs"
     gpg --detach-sign --default-key "${gpg_key}" airootfs.sfs
+    _msg_info "cd -- ${OLDPWD}"
     cd -- "${OLDPWD}"
     _msg_info "完成!!!"
 }
@@ -602,9 +615,9 @@ _make_boot_uefi-x64.systemd-boot.eltorito()
 # Build airootfs filesystem image
 _make_prepare()
 {
-    if [[ "${airootfs_image_type}" == "squashfs" ]]; then # prepare airootfs.sfs for overlayfs usage (default)
+    if [[ "${airootfs_image_type}" == "squashfs" ]]; then               # prepare airootfs.sfs for overlayfs usage (default)
         _run_once _mkairootfs_sfs
-    elif [[ "${airootfs_image_type}" == "ext4+squashfs" ]]; then # prepare airootfs.sfs for dm-snapshot usage
+    elif [[ "${airootfs_image_type}" == "ext4+squashfs" ]]; then        # prepare airootfs.sfs for dm-snapshot usage
         _run_once _mkairootfs_img
     else
         _msg_error "不支持的镜像类型: '${airootfs_image_type}'" 1
