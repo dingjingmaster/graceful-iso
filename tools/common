@@ -9,9 +9,9 @@ _msg_info()
 {
     local _msg="${1}"
     if [[ ${app_name} == '' ]]; then
-        [[ "${quiet}" == "y" ]] || printf '\033[32m信息: %s\033[0m\n' "${_msg}"
+        [[ "${quiet}" == "y" ]] || printf '\033[32m信息: %s\033[0m\n' "${_msg}" | sed ':label;N;s/[\n]/ /;b label' | sed 's/[\t\n\r ]*/ /'
     else
-        [[ "${quiet}" == "y" ]] || printf '\033[32m[%s] 信息: %s\033[0m\n' "${app_name}" "${_msg}"
+        [[ "${quiet}" == "y" ]] || printf '\033[32m[%s] 信息: %s\033[0m\n' "${app_name}" "${_msg}"i | sed ':label;N;s/[\n]/ /;b label' | sed 's/[\t\n\r ]*/ /'
     fi
 }
 

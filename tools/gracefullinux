@@ -47,6 +47,7 @@ _clean_space()
 {
     _msg_warning "开始清除 ${work_dir}/out 镜像文件 ..."
     if [ -e "${work_dir}/out" ]; then
+        _msg_info "rm -rf ${work_dir}/out"
         rm -rf "${work_dir}/out"
     fi
     _msg_warning "清除 ${work_dir}/out 镜像文件完成!!!"
@@ -56,10 +57,12 @@ _local_package()
 {
     _msg_info "开始搜索本地缓冲的软件包 ..."
     if [[ -e "${work_dir}/packages" ]]; then
+        _msg_info "rm -rf ${work_dir}/packages"
         rm -rf "${work_dir}/packages"
     fi
 
     if [[ -d "/data/gracefullinux-packages" ]]; then
+        _msg_info "ln -s /data/gracefullinux-packages ${work_dir}/packages"
         ln -s "/data/gracefullinux-packages" "${work_dir}/packages"
     fi
     _msg_info "搜索本地缓冲的软件包完成!!!"
@@ -67,18 +70,23 @@ _local_package()
 
 _chroot_init()
 {
+    _msg_info "install -d -m 0755 -o 0 -g 0 -- ${airootfs_dir}"
     install -d -m 0755 -o 0 -g 0 -- "${airootfs_dir}"
+    _msg_info "_pacman base syslinux"
     _pacman base syslinux
 }
 
 _chroot_run()
 {
+    _msg_info "eval -- arch-chroot ${airootfs_dir} ${run_cmd}"
     eval -- arch-chroot "${airootfs_dir}" "${run_cmd}"
 }
 
 _mount_airootfs()
 {
+    _msg_info "trap _umount_airootfs EXIT HUB INT TERM"
     trap "_umount_airootfs" EXIT HUB INT TERM
+    _msg_info "install -d -m 0755 -- ${work_dir}/mnt/airootfs"
     install -d -m 0755 -- "${work_dir}/mnt/airootfs"
     _msg_info "正在把 '${airootfs_dir}.img' 挂载到 '${work_dir}/mnt/airootfs' ..."
     _msg_info "mount -- ${airootfs_dir}.img ${work_dir}/mnt/airootfs"
@@ -144,8 +152,10 @@ _pacman()
 {
     _msg_info "正在安裝軟件包到 '${airootfs_dir}/' ..."
     if [[ "${quiet}" = "y" ]]; then
+        _msg_info "pacstrap -C ${work_dir}/pacman.conf -c -G -M -- ${airootfs_dir} $@ &> /dev/null"
         pacstrap -C "${work_dir}/pacman.conf" -c -G -M -- "${airootfs_dir}" "$@" &> /dev/null
     else
+        _msg_info "pacstrap -C ${work_dir}/pacman.conf -c -G -M -- ${airootfs_dir} $@"
         pacstrap -C "${work_dir}/pacman.conf" -c -G -M -- "${airootfs_dir}" "$@"
     fi
 
@@ -159,38 +169,46 @@ _cleanup()
 
     # 删除 /boot 下的文件
     if [[ -d "${airootfs_dir}/boot" ]]; then
+        _msg_info "find ${airootfs_dir}/boot -mindepth 1 -delete"
         find "${airootfs_dir}/boot" -mindepth 1 -delete
     fi
 
     # 删除 pacman 数据库缓冲下的包文件 (*.tar.gz)
     if [[ -d "${airootfs_dir}/var/lib/pacman" ]]; then
+        _msg_info "find ${airootfs_dir}/var/lib/pacman -maxdepth 1 -type f -delete"
         find "${airootfs_dir}/var/lib/pacman" -maxdepth 1 -type f -delete
     fi
 
     # 删除 pacman 数据库缓冲
     if [[ -d "${airootfs_dir}/var/lib/pacman/sync" ]]; then
+        _msg_info "find ${airootfs_dir}/var/lib/pacman/sync -delete"
         find "${airootfs_dir}/var/lib/pacman/sync" -delete
     fi
 
     # 删除 pacman 包缓冲
     if [[ -d "${airootfs_dir}/var/cache/pacman/pkg" ]]; then
+        _msg_info "find ${airootfs_dir}/var/cache/pacman/pkg -type f -delete"
         find "${airootfs_dir}/var/cache/pacman/pkg" -type f -delete
     fi
 
     # 删除所有的日志文件
     if [[ -d "${airootfs_dir}/var/log" ]]; then
+        _msg_info "find ${airootfs_dir}/var/log -type f -delete"
         find "${airootfs_dir}/var/log" -type f -delete
     fi
 
     # 删除临时文件
     if [[ -d "${airootfs_dir}/var/tmp" ]]; then
+        _msg_info "find ${airootfs_dir}/var/tmp -mindepth 1 -delete"
         find "${airootfs_dir}/var/tmp" -mindepth 1 -delete
     fi
 
     # 删除 pacman 相关的文件
+    _msg_info 'find ${work_dir} \( -name "*.pacnew" -o -name "*.pacsave" -o -name "*.pacorig" \) -delete'
     find "${work_dir}" \( -name '*.pacnew' -o -name '*.pacsave' -o -name '*.pacorig' \) -delete
 
     # 创建一个空的 /etc/matchine-id
+    _msg_info "printf '' > ${airootfs_dir}/etc/machine-id"
     printf '' > "${airootfs_dir}/etc/machine-id"
 
     _msg_info "完成!!!"
@@ -206,6 +224,7 @@ _mkairootfs_create_image()
     image_path="${isofs_dir}/${install_dir}/${arch}/airootfs.sfs"
     if [[ "${airootfs_image_type}" =~ .*squashfs ]] ; then
         if [[ "${quiet}" == "y" ]]; then
+            _msg_info "mksquashfs $@ ${image_path} -noappend ${airootfs_image_tool_options[@]} -no-progress > /dev/null"
             mksquashfs "$@" "${image_path}" -noappend "${airootfs_image_tool_options[@]}" -no-progress > /dev/null
         else
             _msg_info "mksquashfs $@ ${image_path} -noappend ${airootfs_image_tool_options[@]}"
@@ -225,6 +244,7 @@ _mkairootfs_img()
 
     _msg_info "开始创建一个 32GB 的 ext4 镜像 ..."
     if [[ "${quiet}" == "y" ]]; then
+        _msg_info "mkfs.ext4 -q -O '^has_journal,^resize_inode' -E 'lazy_itable_init=0' -m 0 -F -- ${airootfs_dir}.img 32G"
         mkfs.ext4 -q -O '^has_journal,^resize_inode' -E 'lazy_itable_init=0' -m 0 -F -- "${airootfs_dir}.img" 32G
     else
         _msg_info "mkfs.ext4 -O '^has_journal,^resize_inode' -E 'lazy_itable_init=0' -m 0 -F -- ${airootfs_dir}.img 32G"
@@ -262,6 +282,7 @@ _mkairootfs_sfs()
 
     install -d -m 0755 -- "${isofs_dir}/${install_dir}/${arch}"
     _msg_info "正在创建 SquashFS 镜像, 这可能需要花点时间 ..."
+    _msg_info "_mkairootfs_create_image ${airootfs_dir}"
     _mkairootfs_create_image "${airootfs_dir}"
     _msg_info "完成!!!"
 }
@@ -270,7 +291,9 @@ _mkchecksum()
 {
     _msg_info "创建 sha512sum ..."
     _msg_info "cd -- ${isofs_dir}/${install_dir}/${arch}"
+    _msg_info "cd -- ${isofs_dir}/${install_dir}/${arch}"
     cd -- "${isofs_dir}/${install_dir}/${arch}"
+    _msg_info "sha512sum airootfs.sfs > airootfs.sha512"
     sha512sum airootfs.sfs > airootfs.sha512
     _msg_info "cd -- ${OLDPWD}"
     cd -- "${OLDPWD}"
@@ -314,10 +337,17 @@ _make_pacman_conf()
    fi
    
    _msg_info "复制自定义的 pacman.conf 到工作目录..."
+
+   _msg_info "pacman-conf --config ${pacman_conf} | \
+       sed '/CacheDir/d;/DBPath/d;/HookDir/d;/LogFile/d;/RootDir/d' > ${work_dir}/pacman.conf"
    pacman-conf --config "${pacman_conf}" | \
        sed '/CacheDir/d;/DBPath/d;/HookDir/d;/LogFile/d;/RootDir/d' > "${work_dir}/pacman.conf"
    
    _msg_info "正在使用 pacman 缓冲文件夹: ${_cache_dirs}"
+
+   _msg_info "sed /\[options\]/a CacheDir = ${_cache_dirs}
+        /\[options\]/a HookDir = ${airootfs_dir}/etc/pacman.d/hooks/ \
+            -i ${work_dir}/pacman.conf"
 
    sed "/\[options\]/a CacheDir = ${_cache_dirs}
         /\[options\]/a HookDir = ${airootfs_dir}/etc/pacman.d/hooks/" \
@@ -329,14 +359,19 @@ _make_custom_airootfs()
 {
     local passwd=()
 
+    _msg_info "install -d -m 0755 -o 0 -g 0 -- ${airootfs_dir}"
     install -d -m 0755 -o 0 -g 0 -- "${airootfs_dir}"
 
     if [[ -d "${profile}/airootfs" ]]; then
         _msg_info "开始复制自定义的文件和设置到用户家目录..."
+        _msg_info "cp -af --no-preserve=ownership -- ${profile}/airootfs/. ${airootfs_dir}"
         cp -af --no-preserve=ownership -- "${profile}/airootfs/." "${airootfs_dir}"
 
         [[ -e "${airootfs_dir}/etc/shadow" ]] && chmod -f 0400 -- "${airootfs_dir}/etc/shadow"
+        _msg_info "[[ -e ${airootfs_dir}/etc/shadow ]] && chmod -f 0400 -- ${airootfs_dir}/etc/shadow"
+
         [[ -e "${airootfs_dir}/etc/gshadow" ]] && chmod -f 0400 -- "${airootfs_dir}/etc/gshadow"
+        _msg_info "[[ -e ${airootfs_dir}/etc/gshadow ]] && chmod -f 0400 -- ${airootfs_dir}/etc/gshadow"
 
         if [[ -e "${airootfs_dir}/etc/passwd" ]]; then
             while IFS=':' read -a passwd -r; do
@@ -344,9 +379,12 @@ _make_custom_airootfs()
                 [[ -z "${passwd[5]}" ]] && continue
 
                 if [[ -d "${airootfs_dir}${passwd[5]}" ]]; then
+                    _msg_info "chown -hR -- ${passwd[2]}:${passwd[3]} ${airootfs_dir}${passwd[5]}"
                     chown -hR -- "${passwd[2]}:${passwd[3]}" "${airootfs_dir}${passwd[5]}"
+                    _msg_info "chmod -f 0750 -- ${airootfs_dir}${passwd[5]}"
                     chmod -f 0750 -- "${airootfs_dir}${passwd[5]}"
                 else
+                    _msg_info "install -d -m 0750 -o ${passwd[2]} -g ${passwd[3]} -- ${airootfs_dir}${passwd[5]}"
                     install -d -m 0750 -o "${passwd[2]}" -g "${passwd[3]}" -- "${airootfs_dir}${passwd[5]}"
                 fi
             done < "${airootfs_dir}/etc/passwd"
@@ -358,13 +396,18 @@ _make_custom_airootfs()
 _make_packages()
 {
     if [[ -n "${gpg_key}" ]]; then
+        _msg_info "exec {ARCHISO_GNUPG_FD}<>${work_dir}/pubkey.gpg"
         exec {ARCHISO_GNUPG_FD}<>"${work_dir}/pubkey.gpg"
+        _msg_info "export ARCHISO_GNUPG_FD"
         export ARCHISO_GNUPG_FD
     fi
 
+    _msg_info "_pacman ${pkg_list[@]}"
     _pacman "${pkg_list[@]}"
     if [[ -n "${gpg_key}" ]]; then
+        _msg_info "exec {ARCHISO_GNUPG_FD}<&-"
         exec {ARCHISO_GNUPG_FD}<&-
+        _msg_info "unset ARCHISO_GNUPG_FD"
         unset ARCHISO_GNUPG_FD
     fi
 }
@@ -380,8 +423,11 @@ _make_customize_airootfs()
             (( passwd[2] >= 1000 && passwd[2] < 60000 )) || continue
             [[ "${passwd[5]}" == '/' ]] && continue
             [[ -z "${passwd[5]}" ]] && continue
+            _msg_info "cp -dnRT --preserve=mode,timestamps,links -- ${airootfs_dir}/etc/skel ${airootfs_dir}${passwd[5]}"
             cp -dnRT --preserve=mode,timestamps,links -- "${airootfs_dir}/etc/skel" "${airootfs_dir}${passwd[5]}"
+            _msg_info "chmod -f 0750 -- ${airootfs_dir}${passwd[5]}"
             chmod -f 0750 -- "${airootfs_dir}${passwd[5]}"
+            _msg_info "chown -hR -- ${passwd[2]}:${passwd[3]} ${airootfs_dir}${passwd[5]}"
             chown -hR -- "${passwd[2]}:${passwd[3]}" "${airootfs_dir}${passwd[5]}"
    
         done < "${profile}/airootfs/etc/passwd"
@@ -392,6 +438,7 @@ _make_customize_airootfs()
         _msg_info "正在运行 customize_gracefullinux.sh '${airootfs_dir}' chroot..."
         local run_cmd="/root/customize_gracefullinux.sh"
         _chroot_run
+        _msg_info "rm -- ${airootfs_dir}/root/customize_gracefullinux.sh"
         rm -- "${airootfs_dir}/root/customize_gracefullinux.sh"
         _msg_info "完成!!! customize_gracefullinux.sh 运行完成."
     fi
@@ -403,8 +450,10 @@ _make_bootmodes()
     local bootmode
     for bootmode in "${bootmodes[@]}"; do
         if typeset -f "_make_boot_${bootmode}" &> /dev/null; then
+            _msg_info "_run_once _make_boot_${bootmode}"
             _run_once "_make_boot_${bootmode}"
         else
+            _msg_info "_msg_error 无效的 boot 模式: ${bootmode}"
             _msg_error "无效的 boot 模式: ${bootmode}" 1
         fi
     done
@@ -416,15 +465,25 @@ _make_boot_on_iso()
     local ucode_image
     _msg_info "开始为 ISO-9660 文件系统准备内核和 initramfs ..."
 
+    _msg_info "install -d -m 0755 -- ${isofs_dir}/${install_dir}/boot/${arch}"
     install -d -m 0755 -- "${isofs_dir}/${install_dir}/boot/${arch}"
+
+    _msg_info "install -m 0644 -- ${airootfs_dir}/boot/initramfs-*.img ${isofs_dir}/${install_dir}/boot/${arch}/"
     install -m 0644 -- "${airootfs_dir}/boot/initramfs-"*".img" "${isofs_dir}/${install_dir}/boot/${arch}/"
+
+    _msg_info "install -m 0644 -- ${airootfs_dir}/boot/vmlinuz-* ${isofs_dir}/${install_dir}/boot/${arch}/"
     install -m 0644 -- "${airootfs_dir}/boot/vmlinuz-"* "${isofs_dir}/${install_dir}/boot/${arch}/"
 
     for ucode_image in {intel-uc.img,intel-ucode.img,amd-uc.img,amd-ucode.img,early_ucode.cpio,microcode.cpio}; do
         if [[ -e "${airootfs_dir}/boot/${ucode_image}" ]]; then
+            _msg_info "install -m 0644 -- ${airootfs_dir}/boot/${ucode_image} ${isofs_dir}/${install_dir}/boot/"
             install -m 0644 -- "${airootfs_dir}/boot/${ucode_image}" "${isofs_dir}/${install_dir}/boot/"
             if [[ -e "${airootfs_dir}/usr/share/licenses/${ucode_image%.*}/" ]]; then
+                _msg_info "install -d -m 0755 -- ${isofs_dir}/${install_dir}/boot/licenses/${ucode_image%.*}/"
                 install -d -m 0755 -- "${isofs_dir}/${install_dir}/boot/licenses/${ucode_image%.*}/"
+
+                _msg_info "install -m 0644 -- ${airootfs_dir}/usr/share/licenses/${ucode_image%.*}/* \
+                    ${isofs_dir}/${install_dir}/boot/licenses/${ucode_image%.*}/"
                 install -m 0644 -- "${airootfs_dir}/usr/share/licenses/${ucode_image%.*}/"* \
                     "${isofs_dir}/${install_dir}/boot/licenses/${ucode_image%.*}/"
             fi
@@ -438,8 +497,13 @@ _make_boot_on_iso()
 _make_boot_bios.syslinux.mbr()
 {
     _msg_info "开始设置从磁盘文件系统引导操作系统 ..."
+    _msg_info "install -d -m 0755 -- ${isofs_dir}/${install_dir}/boot/syslinux"
     install -d -m 0755 -- "${isofs_dir}/${install_dir}/boot/syslinux"
     for _cfg in "${profile}/syslinux/"*.cfg; do
+        _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
+            s|%INSTALL_DIR%|${install_dir}|g;
+            s|%ARCH%|${arch}|g \
+            ${_cfg} > ${isofs_dir}/${install_dir}/boot/syslinux/${_cfg##*/}"
         sed "s|%ARCHISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
             s|%ARCH%|${arch}|g" \
@@ -447,22 +511,33 @@ _make_boot_bios.syslinux.mbr()
     done
 
     if [[ -e "${profile}/syslinux/splash.png" ]]; then
+        _msg_info "install -m 0644 -- ${profile}/syslinux/splash.png ${isofs_dir}/${install_dir}/boot/syslinux/"
         install -m 0644 -- "${profile}/syslinux/splash.png" "${isofs_dir}/${install_dir}/boot/syslinux/"
     fi
 
+    _msg_info "install -m 0644 -- ${airootfs_dir}/usr/lib/syslinux/bios/*.c32 ${isofs_dir}/${install_dir}/boot/syslinux/"
     install -m 0644 -- "${airootfs_dir}/usr/lib/syslinux/bios/"*.c32 "${isofs_dir}/${install_dir}/boot/syslinux/"
+
+    _msg_info "install -m 0644 -- ${airootfs_dir}/usr/lib/syslinux/bios/lpxelinux.0 ${isofs_dir}/${install_dir}/boot/syslinux/"
     install -m 0644 -- "${airootfs_dir}/usr/lib/syslinux/bios/lpxelinux.0" "${isofs_dir}/${install_dir}/boot/syslinux/"
+
+    _msg_info "install -m 0644 -- ${airootfs_dir}/usr/lib/syslinux/bios/memdisk ${isofs_dir}/${install_dir}/boot/syslinux/"
     install -m 0644 -- "${airootfs_dir}/usr/lib/syslinux/bios/memdisk" "${isofs_dir}/${install_dir}/boot/syslinux/"
    
     _run_once _make_boot_on_iso
    
     if [[ -e "${isofs_dir}/${install_dir}/boot/syslinux/hdt.c32" ]]; then
+        _msg_info "install -d -m 0755 -- ${isofs_dir}/${install_dir}/boot/syslinux/hdt"
         install -d -m 0755 -- "${isofs_dir}/${install_dir}/boot/syslinux/hdt"
         if [[ -e "${airootfs_dir}/usr/share/hwdata/pci.ids" ]]; then
+            _msg_info "gzip -c -9 ${airootfs_dir}/usr/share/hwdata/pci.ids > \
+                ${isofs_dir}/${install_dir}/boot/syslinux/hdt/pciids.gz"
             gzip -c -9 "${airootfs_dir}/usr/share/hwdata/pci.ids" > \
                 "${isofs_dir}/${install_dir}/boot/syslinux/hdt/pciids.gz"
         fi
 
+        _msg_info "find ${airootfs_dir}/usr/lib/modules -name 'modules.alias' -print -exec gzip -c -9 '{}' ';' -quit > \
+                ${isofs_dir}/${install_dir}/boot/syslinux/hdt/modalias.gz"
         find "${airootfs_dir}/usr/lib/modules" -name 'modules.alias' -print -exec gzip -c -9 '{}' ';' -quit > \
                 "${isofs_dir}/${install_dir}/boot/syslinux/hdt/modalias.gz"
     fi
@@ -470,8 +545,14 @@ _make_boot_bios.syslinux.mbr()
    # Add other aditional/extra files to ${install_dir}/boot/
    if [[ -e "${airootfs_dir}/boot/memtest86+/memtest.bin" ]]; then
        # rename for PXE: https://wiki.archlinux.org/index.php/Syslinux#Using_memtest
+       _msg_info "install -m 0644 -- ${airootfs_dir}/boot/memtest86+/memtest.bin ${isofs_dir}/${install_dir}/boot/memtest"
        install -m 0644 -- "${airootfs_dir}/boot/memtest86+/memtest.bin" "${isofs_dir}/${install_dir}/boot/memtest"
+
+       _msg_info "install -d -m 0755 -- ${isofs_dir}/${install_dir}/boot/licenses/memtest86+/"
        install -d -m 0755 -- "${isofs_dir}/${install_dir}/boot/licenses/memtest86+/"
+
+       _msg_info "install -m 0644 -- ${airootfs_dir}/usr/share/licenses/common/GPL2/license.txt \
+                ${isofs_dir}/${install_dir}/boot/licenses/memtest86+/"
        install -m 0644 -- "${airootfs_dir}/usr/share/licenses/common/GPL2/license.txt" \
                 "${isofs_dir}/${install_dir}/boot/licenses/memtest86+/"
    fi
@@ -485,14 +566,23 @@ _make_boot_bios.syslinux.eltorito()
     _msg_info "开始设置系统从光盘引导 ..."
     install -d -m 0755 -- "${isofs_dir}/isolinux"
     for _cfg in "${profile}/isolinux/"*".cfg"; do
+        _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
+            s|%INSTALL_DIR%|${install_dir}|g;
+            s|%ARCH%|${arch}|g \
+            ${_cfg} > ${isofs_dir}/isolinux/${_cfg##*/}"
         sed "s|%ARCHISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
             s|%ARCH%|${arch}|g" \
             "${_cfg}" > "${isofs_dir}/isolinux/${_cfg##*/}"
     done
 
+    _msg_info "install -m 0644 -- ${airootfs_dir}/usr/lib/syslinux/bios/isolinux.bin ${isofs_dir}/isolinux/"
     install -m 0644 -- "${airootfs_dir}/usr/lib/syslinux/bios/isolinux.bin" "${isofs_dir}/isolinux/"
+
+    _msg_info "install -m 0644 -- ${airootfs_dir}/usr/lib/syslinux/bios/isohdpfx.bin ${isofs_dir}/isolinux/"
     install -m 0644 -- "${airootfs_dir}/usr/lib/syslinux/bios/isohdpfx.bin" "${isofs_dir}/isolinux/"
+
+    _msg_info "install -m 0644 -- ${airootfs_dir}/usr/lib/syslinux/bios/ldlinux.c32 ${isofs_dir}/isolinux/"
     install -m 0644 -- "${airootfs_dir}/usr/lib/syslinux/bios/ldlinux.c32" "${isofs_dir}/isolinux/"
 
     # isolinux.cfg loads syslinux.cfg
@@ -505,14 +595,25 @@ _make_efi()
 {
     _msg_info "开始为ISO 9660文件系统准备 /EFI 目录 ..."
 
+    _msg_info "install -d -m 0755 -- ${isofs_dir}/EFI/BOOT"
     install -d -m 0755 -- "${isofs_dir}/EFI/BOOT"
+
+    _msg_info "install -m 0644 -- ${airootfs_dir}/usr/lib/systemd/boot/efi/systemd-bootx64.efi \
+            ${isofs_dir}/EFI/BOOT/BOOTx64.EFI"
     install -m 0644 -- "${airootfs_dir}/usr/lib/systemd/boot/efi/systemd-bootx64.efi" \
             "${isofs_dir}/EFI/BOOT/BOOTx64.EFI"
 
+    _msg_info "install -d -m 0755 -- ${isofs_dir}/loader/entries"
     install -d -m 0755 -- "${isofs_dir}/loader/entries"
+
+    _msg_info "install -m 0644 -- ${profile}/efiboot/loader/loader.conf ${isofs_dir}/loader/"
     install -m 0644 -- "${profile}/efiboot/loader/loader.conf" "${isofs_dir}/loader/"
 
     for _conf in "${profile}/efiboot/loader/entries/"*".conf"; do
+        _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
+            s|%INSTALL_DIR%|${install_dir}|g;
+            s|%ARCH%|${arch}|g \
+            ${_conf} > ${isofs_dir}/loader/entries/${_conf##*/}"
         sed "s|%ARCHISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
             s|%ARCH%|${arch}|g" \
@@ -522,6 +623,7 @@ _make_efi()
     # edk2-shell based UEFI shell
     # shellx64.efi is picked up automatically when on /
     if [[ -e "${airootfs_dir}/usr/share/edk2-shell/x64/Shell_Full.efi" ]]; then
+        _msg_info "install -m 0644 -- ${airootfs_dir}/usr/share/edk2-shell/x64/Shell_Full.efi ${isofs_dir}/shellx64.efi"
         install -m 0644 -- "${airootfs_dir}/usr/share/edk2-shell/x64/Shell_Full.efi" "${isofs_dir}/shellx64.efi"
     fi
     _msg_info "完成!!!"
@@ -532,9 +634,13 @@ _make_boot_on_fat()
 {
     local ucode_image all_ucode_images=()
     _msg_info "为FAT文件系统准备内核和内部文件 ..."
+    _msg_info "mmd -i ${work_dir}/efiboot.img \
+        ::/${install_dir} ::/${install_dir}/boot ::/${install_dir}/boot/${arch}"
     mmd -i "${work_dir}/efiboot.img" \
         "::/${install_dir}" "::/${install_dir}/boot" "::/${install_dir}/boot/${arch}"
 
+    _msg_info "mcopy -i ${work_dir}/efiboot.img ${airootfs_dir}/boot/vmlinuz-* \
+        ${airootfs_dir}/boot/initramfs-*.img ::/${install_dir}/boot/${arch}/"
     mcopy -i "${work_dir}/efiboot.img" "${airootfs_dir}/boot/vmlinuz-"* \
         "${airootfs_dir}/boot/initramfs-"*".img" "::/${install_dir}/boot/${arch}/"
 
@@ -547,6 +653,7 @@ _make_boot_on_fat()
     done
 
     if (( ${#all_ucode_images[@]} )); then
+        _msg_info "mcopy -i ${work_dir}/efiboot.img ${all_ucode_images[@]} ::/${install_dir}/boot/"
         mcopy -i "${work_dir}/efiboot.img" "${all_ucode_images[@]}" "::/${install_dir}/boot/"
     fi
 
@@ -577,15 +684,28 @@ _make_boot_uefi-x64.systemd-boot.esp()
     # https://lists.gnu.org/archive/html/grub-devel/2019-04/msg00099.html
     [[ -e "${work_dir}/efiboot.img" ]] && rm -f -- "${work_dir}/efiboot.img"
     _msg_info "正在创建 FAT 镜像, 大小为: ${efiboot_imgsize} KiB..."
+    _msg_info "mkfs.fat -C -n ARCHISO_EFI ${work_dir}/efiboot.img $efiboot_imgsize"
     mkfs.fat -C -n ARCHISO_EFI "${work_dir}/efiboot.img" "$efiboot_imgsize"
 
+    _msg_info "mmd -i ${work_dir}/efiboot.img ::/EFI ::/EFI/BOOT"
     mmd -i "${work_dir}/efiboot.img" ::/EFI ::/EFI/BOOT
+
+    _msg_info "mcopy -i ${work_dir}/efiboot.img \
+        ${airootfs_dir}/usr/lib/systemd/boot/efi/systemd-bootx64.efi ::/EFI/BOOT/BOOTx64.EFI"
     mcopy -i "${work_dir}/efiboot.img" \
         "${airootfs_dir}/usr/lib/systemd/boot/efi/systemd-bootx64.efi" ::/EFI/BOOT/BOOTx64.EFI
 
+    _msg_info "mmd -i ${work_dir}/efiboot.img ::/loader ::/loader/entries"
     mmd -i "${work_dir}/efiboot.img" ::/loader ::/loader/entries
+
+    _msg_info "mcopy -i ${work_dir}/efiboot.img ${profile}/efiboot/loader/loader.conf ::/loader/"
     mcopy -i "${work_dir}/efiboot.img" "${profile}/efiboot/loader/loader.conf" ::/loader/
+
     for _conf in "${profile}/efiboot/loader/entries/"*".conf"; do
+        _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
+            s|%INSTALL_DIR%|${install_dir}|g;
+            s|%ARCH%|${arch}|g \
+            ${_conf} | mcopy -i ${work_dir}/efiboot.img - ::/loader/entries/${_conf##*/}"
         sed "s|%ARCHISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
             s|%ARCH%|${arch}|g" \
@@ -594,6 +714,8 @@ _make_boot_uefi-x64.systemd-boot.esp()
 
     # shellx64.efi is picked up automatically when on /
     if [[ -e "${airootfs_dir}/usr/share/edk2-shell/x64/Shell_Full.efi" ]]; then
+        _msg_info "mcopy -i ${work_dir}/efiboot.img \
+            ${airootfs_dir}/usr/share/edk2-shell/x64/Shell_Full.efi ::/shellx64.efi"
         mcopy -i "${work_dir}/efiboot.img" \
             "${airootfs_dir}/usr/share/edk2-shell/x64/Shell_Full.efi" ::/shellx64.efi
     fi
@@ -696,6 +818,7 @@ _make_iso()
             _msg_error "'${work_dir}/efiboot.img' 文件不存在." 1
         fi
 
+        _msg_info "[[ -e ${isofs_dir}/EFI/archiso ]] && rm -rf -- ${isofs_dir}/EFI/archiso"
         [[ -e "${isofs_dir}/EFI/archiso" ]] && rm -rf -- "${isofs_dir}/EFI/archiso"
    
         # systemd-boot in an attached EFI system partition
@@ -726,7 +849,9 @@ _make_iso()
         elif [[ " ${bootmodes[*]} " =~ ' uefi-x64.systemd-boot.eltorito ' ]]; then
             # The ISO will not contain a GPT partition table, so to be able to reference efiboot.img, place it as a
             # file inside the ISO 9660 file system
+            _msg_info "install -d -m 0755 -- ${isofs_dir}/EFI/archiso"
             install -d -m 0755 -- "${isofs_dir}/EFI/archiso"
+            _msg_info "cp -a -- ${work_dir}/efiboot.img ${isofs_dir}/EFI/archiso/efiboot.img"
             cp -a -- "${work_dir}/efiboot.img" "${isofs_dir}/EFI/archiso/efiboot.img"
    
             xorrisofs_options+=(
@@ -744,6 +869,20 @@ _make_iso()
     fi
 
     _msg_info "开始创建 ISO 镜像 ..."
+    _msg_info "xorriso -as mkisofs \
+        -iso-level 3 \
+        -full-iso9660-filenames \
+        -joliet \
+        -joliet-long \
+        -rational-rock \
+        -volid ${iso_label} \
+        -appid ${iso_application} \
+        -publisher ${iso_publisher} \
+        -preparer 准备 ${app_name} \
+        ${xorrisofs_options[@]} \
+        -output ${out_dir}/${img_name} \
+        ${isofs_dir}/"
+
     xorriso -as mkisofs \
         -iso-level 3 \
         -full-iso9660-filenames \
@@ -758,7 +897,7 @@ _make_iso()
         -output "${out_dir}/${img_name}" \
         "${isofs_dir}/"
 
-    _msg_info "完成!!!"
+    _msg_info "创建 ISO 完成!!!"
     du -h -- "${out_dir}/${img_name}"
 }
 
@@ -787,7 +926,9 @@ _read_profile()
         # Enumerate packages
         [[ -e "${packages}" ]] || _msg_error "'${packages}' 文件不存在!" 1
         mapfile -t pkg_list < <(sed '/^[[:blank:]]*#.*/d;s/#.*//;/^[[:blank:]]*$/d' "${packages}")
+        _msg_info "mapfile -t pkg_list < <(sed '/^[[:blank:]]*#.*/d;s/#.*//;/^[[:blank:]]*$/d' ${packages})"
 
+        _msg_info "cd -- ${OLDPWD}"
         cd -- "${OLDPWD}"
     fi
 }
@@ -823,14 +964,18 @@ _set_overrides()
 _export_gpg_publickey()
 {
     if [[ -n "${gpg_key}" ]]; then
+        _msg_info "gpg --batch --output ${work_dir}/pubkey.gpg --export ${gpg_key}"
         gpg --batch --output "${work_dir}/pubkey.gpg" --export "${gpg_key}"
     fi
 }
 
 _make_pkglist()
 {
+    _msg_info "install -d -m 0755 -- ${isofs_dir}/${install_dir}"
     install -d -m 0755 -- "${isofs_dir}/${install_dir}"
+
     _msg_info "在 live 环境下安装软件包 ..."
+    _msg_info "pacman -Q --sysroot ${airootfs_dir} > ${isofs_dir}/${install_dir}/pkglist.${arch}.txt"
     pacman -Q --sysroot "${airootfs_dir}" > "${isofs_dir}/${install_dir}/pkglist.${arch}.txt"
     _msg_info "完成!!!"
 }
@@ -851,6 +996,7 @@ _build_profile()
     if [[ -e "${work_dir}/build_date" ]]; then
         SOURCE_DATE_EPOCH="$(<"${work_dir}/build_date")"
     else
+        _msg_info "printf '%s\n' $SOURCE_DATE_EPOCH > ${work_dir}/build_date"
         printf '%s\n' "$SOURCE_DATE_EPOCH" > "${work_dir}/build_date"
     fi
     
