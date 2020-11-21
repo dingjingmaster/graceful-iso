@@ -450,10 +450,8 @@ _make_bootmodes()
     local bootmode
     for bootmode in "${bootmodes[@]}"; do
         if typeset -f "_make_boot_${bootmode}" &> /dev/null; then
-            _msg_info "_run_once _make_boot_${bootmode}"
             _run_once "_make_boot_${bootmode}"
         else
-            _msg_info "_msg_error 无效的 boot 模式: ${bootmode}"
             _msg_error "无效的 boot 模式: ${bootmode}" 1
         fi
     done
