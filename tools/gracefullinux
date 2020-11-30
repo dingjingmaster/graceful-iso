@@ -234,7 +234,7 @@ _mkairootfs_create_image()
         _msg_error "不支持的镜像类型: '${airootfs_image_type}'" 1
     fi
 }
-"
+
 # 从源目录在SquashFS中创建ext4文件系统
 _mkairootfs_img()
 {
@@ -604,8 +604,8 @@ _make_efi()
 
     # 设置引导参数
     cd -- "${airootfs_dir}/boot"
-    _vmlinuz=$(realpath -- $(find -maxdepth 1 -type f -name "vmlinuz-*"))
-    _initramfs=$(realpath -- $(find -maxdepth 1 -type f -name "initramfs-*-${arch}.img"))
+    vmlinuz=$(realpath -- $(find -maxdepth 1 -type f -name "vmlinuz-*"))
+    initramfs=$(realpath -- $(find -maxdepth 1 -type f -name "initramfs-*-${arch}.img"))
     cd -- ${OLDPWD}
 
     _msg_info "install -m 0644 -- ${profile}/efiboot/loader/loader.conf ${isofs_dir}/loader/"
@@ -615,14 +615,14 @@ _make_efi()
         _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
             s|%ARCH%|${arch}|g; \
-            s|%INSTALL_INITRAMFS%|${_initramfs}|g; \
-            s|%INSTALL_VMLINUZ%|${_vmlinuz}|g \
+            s|%INSTALL_INITRAMFS%|${initramfs}|g; \
+            s|%INSTALL_VMLINUZ%|${vmlinuz}|g \
             ${_conf} > ${isofs_dir}/loader/entries/${_conf##*/}"
         sed "s|%ISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
             s|%ARCH%|${arch}|g; \
-            s|%INSTALL_VMLINUZ%|${_vmlinuz}|g; \
-            s|%INSTALL_INITRAMFS%|${_initramfs}|g" \
+            s|%INSTALL_VMLINUZ%|${vmlinuz}|g; \
+            s|%INSTALL_INITRAMFS%|${initramfs}|g" \
             "${_conf}" > "${isofs_dir}/loader/entries/${_conf##*/}"
     done
 
