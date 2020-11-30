@@ -2,6 +2,12 @@
 
 . "$(cd $(dirname $0); pwd)/common"
 
+qemu_options+=(
+    '-drive' "if=pflash,format=raw,unit=0,file=${ovmf_code},readonly"
+    '-drive' "if=pflash,format=raw,unit=1,file=${working_dir}/OVMF_VARS.fd"
+    '-global' "driver=cfi.pflash01,property=secure,value=${secure_boot}"
+)
+
 iso_file="$(echo $(realpath -q -e $(find ${work_dir}/out/ -name '*.iso' -print)) | tr -d '\0')"
 
 if [[ ! -f ${iso_file} ]]; then
@@ -9,14 +15,22 @@ if [[ ! -f ${iso_file} ]]; then
 fi
 
 qemu-system-x86_64 \
-    -smp 2 \
-    -boot order=cd,menu=on,reboot-timeout=5000 \
-    -m size=3072,slots=0,maxmem=$(( 3072*1024*1024 )) \
+    -boot order=d,menu=on,reboot-timeout=5000 \
+    -m "size=3072,slots=0,maxmem=$((3072*1024*1024))" \
     -k en \
-    -name gracefullinux,process=gracefullinux_0 \
-    -drive file=${iso_file},media=cdrom,readonly=on \
+    -name archiso,process=archiso_0 \
+    -device virtio-scsi-pci,id=scsi0 \
+    -device "scsi-${mediatype%rom},bus=scsi0.0,drive=${mediatype}0" \
+    -drive "id=${mediatype}0,if=none,format=raw,media=${mediatype/hd/disk},readonly=on,file=${1}" \
     -display sdl \
     -vga virtio \
+    -audiodev pa,id=snd0 \
+    -device ich9-intel-hda \
+    -device hda-output,audiodev=snd0 \
+    -device virtio-net-pci,romfile=,netdev=net0 -netdev user,id=net0 \
+    -machine type=q35,smm=on,accel=kvm,usb=on,pcspk-audiodev=snd0 \
+    -global ICH9-LPC.disable_s3=1 \
     -enable-kvm \
-    -no-reboot \
-    -no-shutdown \
+    "${qemu_options[@]}" \
+    -serial stdio \
+    -no-reboot

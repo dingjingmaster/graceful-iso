@@ -234,7 +234,7 @@ _mkairootfs_create_image()
         _msg_error "不支持的镜像类型: '${airootfs_image_type}'" 1
     fi
 }
-
+"
 # 从源目录在SquashFS中创建ext4文件系统
 _mkairootfs_img()
 {
@@ -328,7 +328,7 @@ _make_pacman_conf()
     _system_cache_dirs="$(pacman-conf CacheDir| tr '\n' ' ')"
     _profile_cache_dirs="$(pacman-conf --config "${pacman_conf}" CacheDir| tr '\n' ' ')"
    
-   # only use the profile's CacheDir, if it is not the default and not the same as the system cache dir
+    # 设置缓存目录
    if [[ "${_profile_cache_dirs}" != "/var/cache/pacman/pkg" ]] && \
        [[ "${_system_cache_dirs}" != "${_profile_cache_dirs}" ]]; then
        _cache_dirs="${_profile_cache_dirs}"
@@ -396,23 +396,22 @@ _make_custom_airootfs()
 _make_packages()
 {
     if [[ -n "${gpg_key}" ]]; then
-        _msg_info "exec {ARCHISO_GNUPG_FD}<>${work_dir}/pubkey.gpg"
-        exec {ARCHISO_GNUPG_FD}<>"${work_dir}/pubkey.gpg"
-        _msg_info "export ARCHISO_GNUPG_FD"
-        export ARCHISO_GNUPG_FD
+        _msg_info "exec {ISO_GNUPG_FD}<>${work_dir}/pubkey.gpg"
+        exec {ISO_GNUPG_FD}<>"${work_dir}/pubkey.gpg"
+        _msg_info "export ISO_GNUPG_FD"
+        export ISO_GNUPG_FD
     fi
 
     _msg_info "_pacman ${pkg_list[@]}"
     _pacman "${pkg_list[@]}"
     if [[ -n "${gpg_key}" ]]; then
-        _msg_info "exec {ARCHISO_GNUPG_FD}<&-"
-        exec {ARCHISO_GNUPG_FD}<&-
-        _msg_info "unset ARCHISO_GNUPG_FD"
-        unset ARCHISO_GNUPG_FD
+        _msg_info "exec {ISO_GNUPG_FD}<&-"
+        exec {ISO_GNUPG_FD}<&-
+        _msg_info "unset ISO_GNUPG_FD"
+        unset ISO_GNUPG_FD
     fi
 }
 
-# Customize installation (airootfs)
 _make_customize_airootfs()
 {
     local passwd=()
@@ -588,7 +587,6 @@ _make_boot_bios.syslinux.eltorito()
     _msg_info "完成!!! 成功设置系统从光盘引导."
 }
 
-# Prepare /EFI on ISO-9660
 _make_efi()
 {
     _msg_info "开始为ISO 9660文件系统准备 /EFI 目录 ..."
@@ -604,17 +602,27 @@ _make_efi()
     _msg_info "install -d -m 0755 -- ${isofs_dir}/loader/entries"
     install -d -m 0755 -- "${isofs_dir}/loader/entries"
 
+    # 设置引导参数
+    cd -- "${airootfs_dir}/boot"
+    _vmlinuz=$(realpath -- $(find -maxdepth 1 -type f -name "vmlinuz-*"))
+    _initramfs=$(realpath -- $(find -maxdepth 1 -type f -name "initramfs-*-${arch}.img"))
+    cd -- ${OLDPWD}
+
     _msg_info "install -m 0644 -- ${profile}/efiboot/loader/loader.conf ${isofs_dir}/loader/"
     install -m 0644 -- "${profile}/efiboot/loader/loader.conf" "${isofs_dir}/loader/"
 
     for _conf in "${profile}/efiboot/loader/entries/"*".conf"; do
         _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
-            s|%ARCH%|${arch}|g \
+            s|%ARCH%|${arch}|g; \
+            s|%INSTALL_INITRAMFS%|${_initramfs}|g; \
+            s|%INSTALL_VMLINUZ%|${_vmlinuz}|g \
             ${_conf} > ${isofs_dir}/loader/entries/${_conf##*/}"
-        sed "s|%ARCHISO_LABEL%|${iso_label}|g;
+        sed "s|%ISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
-            s|%ARCH%|${arch}|g" \
+            s|%ARCH%|${arch}|g; \
+            s|%INSTALL_VMLINUZ%|${_vmlinuz}|g; \
+            s|%INSTALL_INITRAMFS%|${_initramfs}|g" \
             "${_conf}" > "${isofs_dir}/loader/entries/${_conf##*/}"
     done
 
@@ -724,11 +732,9 @@ _make_boot_uefi-x64.systemd-boot.esp()
     _msg_info "完成!!!"
 }
 
-# Prepare efiboot.img::/EFI for "El Torito" EFI boot mode
 _make_boot_uefi-x64.systemd-boot.eltorito()
 {
     _run_once _make_boot_uefi-x64.systemd-boot.esp
-    # Set up /EFI on ISO-9660
     _run_once _make_efi
 }
 
@@ -899,7 +905,6 @@ _make_iso()
     du -h -- "${out_dir}/${img_name}"
 }
 
-# Read profile's values from profiledef.sh
 _read_profile()
 {
     if [[ -z "${profile}" ]]; then
@@ -913,15 +918,14 @@ _read_profile()
     else
         cd -- "${profile}"
 
-        # Source profile's variables
-        # shellcheck source=configs/releng/profiledef.sh
+        # 添加 ISO 个性化配置
         . "${profile}/profiledef.sh"
 
-        # Resolve paths
+        # 处理为绝对路径
         packages="$(realpath -- "${profile}/packages.${arch}")"
         pacman_conf="$(realpath -- "${pacman_conf}")"
 
-        # Enumerate packages
+        # 列出所有要安装的软件包
         [[ -e "${packages}" ]] || _msg_error "'${packages}' 文件不存在!" 1
         mapfile -t pkg_list < <(sed '/^[[:blank:]]*#.*/d;s/#.*//;/^[[:blank:]]*$/d' "${packages}")
         _msg_info "mapfile -t pkg_list < <(sed '/^[[:blank:]]*#.*/d;s/#.*//;/^[[:blank:]]*$/d' ${packages})"
@@ -931,7 +935,6 @@ _read_profile()
     fi
 }
 
-# set overrides from mkarchiso option parameters, if present
 _set_overrides()
 {
     if [[ -n "$override_iso_label" ]]; then
@@ -980,18 +983,12 @@ _make_pkglist()
 
 _build_profile()
 {
-    # Set up essential directory paths
-    airootfs_dir="${work_dir}/${arch}/airootfs"
-    isofs_dir="${work_dir}/iso"
-    
-    # Set ISO file name
-    img_name="${iso_name}-${iso_version}-${arch}.iso"
+    airootfs_dir="${work_dir}/${arch}/airootfs"                                             # 文件系统路径
+    isofs_dir="${work_dir}/iso"                                                             # 镜像路径
+    img_name="${iso_name}-${iso_version}-${arch}.iso"                                       # 生成 ISO 的镜像名
 
-    # Create working directory
-    [[ -d "${work_dir}" ]] || install -d -- "${work_dir}"
-    
-    # Write build date to file or if the file exists, read it from there
-    if [[ -e "${work_dir}/build_date" ]]; then
+    [[ -d "${work_dir}" ]] || install -d -- "${work_dir}"                                   # 生成构建临时目录
+    if [[ -e "${work_dir}/build_date" ]]; then                                              # 生成构建日期，或者读取构建日期
         SOURCE_DATE_EPOCH="$(<"${work_dir}/build_date")"
     else
         _msg_info "printf '%s\n' $SOURCE_DATE_EPOCH > ${work_dir}/build_date"
@@ -1001,9 +998,9 @@ _build_profile()
     _show_config
     _run_once _make_pacman_conf
     _run_once _export_gpg_publickey
-    _run_once _make_custom_airootfs
-    _run_once _make_packages
-    _run_once _make_customize_airootfs
+    _run_once _make_custom_airootfs                                                         # 自定义密码相关
+    _run_once _make_packages                                                                # 生成文件系统
+    _run_once _make_customize_airootfs                                                      # 运行自定义脚本
     _run_once _make_pkglist
     _make_bootmodes
     _run_once _cleanup
@@ -1039,13 +1036,6 @@ if (( EUID != 0 )); then
     _msg_error "${app_name} 必须以 root 运行." 1
 fi
    
-# 获取镜像制作根目录
-#shift $((OPTIND - 1))
-#if (( $# < 1 )); then
-#    _msg_error "未指定配置文件" 0
-#    _usage 1
-#fi
-#profile="$(realpath -- "${1}")"
 profile=$(dirname $(dirname $(realpath -- $0)))             # 脚本所在项目的根目录
 
 airootfs_dir="${work_dir}/airootfs"
