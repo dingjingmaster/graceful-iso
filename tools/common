@@ -15,6 +15,17 @@ _msg_info()
     fi
 }
 
+# 输出信息
+_msg_info_pure() 
+{
+    local _msg="${1}"
+    if [[ ${app_name} == '' ]]; then
+        [[ "${quiet}" == "y" ]] || printf '\033[32m信息: %s\033[0m\n' "${_msg}" 
+    else
+        [[ "${quiet}" == "y" ]] || printf '\033[32m[%s] 信息: %s\033[0m\n' "${app_name}" "${_msg}" 
+    fi
+}
+
 # 输出警告
 _msg_warning()
 {
