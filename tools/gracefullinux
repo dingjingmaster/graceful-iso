@@ -23,7 +23,7 @@ override_gpg_key=""
 # 默认配置
 profile=""
 iso_name="${app_name}"
-iso_label="${app_name^^}"
+iso_label="${app_name}"
 override_iso_label=""
 iso_publisher="${app_name}"
 override_iso_publisher=""
@@ -496,13 +496,24 @@ _make_boot_bios.syslinux.mbr()
     _msg_info "开始设置从磁盘文件系统引导操作系统 ..."
     _msg_info "install -d -m 0755 -- ${isofs_dir}/${install_dir}/boot/syslinux"
     install -d -m 0755 -- "${isofs_dir}/${install_dir}/boot/syslinux"
+
+    # 设置引导参数
+    cd -- "${airootfs_dir}/boot"
+    vmlinuz=$(basename -- $(find -maxdepth 1 -type f -name "vmlinuz-*"))
+    initramfs=$(basename -- $(find -maxdepth 1 -type f -name "initramfs-*-${arch}.img"))
+    cd -- ${OLDPWD}
+
     for _cfg in "${profile}/syslinux/"*.cfg; do
-        _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
-            s|%INSTALL_DIR%|${install_dir}|g;
+        _msg_info "sed s|%ISO_LABEL%|${iso_label}|g;
+            s|%INSTALL_DIR%|${install_dir}|g; \
+            s|%INSTALL_VMLINUZ%|${vmlinuz}|g; \
+            s|%INSTALL_INITRAMFS%|${initramfs}|g; \
             s|%ARCH%|${arch}|g \
             ${_cfg} > ${isofs_dir}/${install_dir}/boot/syslinux/${_cfg##*/}"
-        sed "s|%ARCHISO_LABEL%|${iso_label}|g;
-            s|%INSTALL_DIR%|${install_dir}|g;
+        sed "s|%ISO_LABEL%|${iso_label}|g; \
+            s|%INSTALL_DIR%|${install_dir}|g; \
+            s|%INSTALL_VMLINUZ%|${vmlinuz}|g; \
+            s|%INSTALL_INITRAMFS%|${initramfs}|g; \
             s|%ARCH%|${arch}|g" \
             "${_cfg}" > "${isofs_dir}/${install_dir}/boot/syslinux/${_cfg##*/}"
     done
@@ -562,13 +573,24 @@ _make_boot_bios.syslinux.eltorito()
 {
     _msg_info "开始设置系统从光盘引导 ..."
     install -d -m 0755 -- "${isofs_dir}/isolinux"
+
+    # 设置引导参数
+    cd -- "${airootfs_dir}/boot"
+    vmlinuz=$(basename -- $(find -maxdepth 1 -type f -name "vmlinuz-*"))
+    initramfs=$(basename -- $(find -maxdepth 1 -type f -name "initramfs-*-${arch}.img"))
+    cd -- ${OLDPWD}
+
     for _cfg in "${profile}/isolinux/"*".cfg"; do
-        _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
-            s|%INSTALL_DIR%|${install_dir}|g;
+        _msg_info "sed s|%ISO_LABEL%|${iso_label}|g; \
+            s|%INSTALL_DIR%|${install_dir}|g; \
+            s|%INSTALL_VMLINUZ%|${vmlinuz}|g; \
+            s|%INSTALL_INITRAMFS%|${initramfs}|g; \
             s|%ARCH%|${arch}|g \
             ${_cfg} > ${isofs_dir}/isolinux/${_cfg##*/}"
-        sed "s|%ARCHISO_LABEL%|${iso_label}|g;
-            s|%INSTALL_DIR%|${install_dir}|g;
+        sed "s|%ISO_LABEL%|${iso_label}|g; \
+            s|%INSTALL_DIR%|${install_dir}|g; \
+            s|%INSTALL_VMLINUZ%|${vmlinuz}|g; \
+            s|%INSTALL_INITRAMFS%|${initramfs}|g; \
             s|%ARCH%|${arch}|g" \
             "${_cfg}" > "${isofs_dir}/isolinux/${_cfg##*/}"
     done
@@ -612,7 +634,7 @@ _make_efi()
     install -m 0644 -- "${profile}/efiboot/loader/loader.conf" "${isofs_dir}/loader/"
 
     for _conf in "${profile}/efiboot/loader/entries/"*".conf"; do
-        _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
+        _msg_info "sed s|%ISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
             s|%ARCH%|${arch}|g; \
             s|%INSTALL_INITRAMFS%|${initramfs}|g; \
@@ -644,6 +666,13 @@ _make_boot_on_fat()
         ::/${install_dir} ::/${install_dir}/boot ::/${install_dir}/boot/${arch}"
     mmd -i "${work_dir}/efiboot.img" \
         "::/${install_dir}" "::/${install_dir}/boot" "::/${install_dir}/boot/${arch}"
+
+    # 设置引导参数
+    cd -- "${airootfs_dir}/boot"
+    vmlinuz=$(basename -- $(find -maxdepth 1 -type f -name "vmlinuz-*"))
+    initramfs=$(basename -- $(find -maxdepth 1 -type f -name "initramfs-*-${arch}.img"))
+    cd -- ${OLDPWD}
+
 
     _msg_info "mcopy -i ${work_dir}/efiboot.img ${airootfs_dir}/boot/vmlinuz-* \
         ${airootfs_dir}/boot/initramfs-*.img ::/${install_dir}/boot/${arch}/"
@@ -707,13 +736,23 @@ _make_boot_uefi-x64.systemd-boot.esp()
     _msg_info "mcopy -i ${work_dir}/efiboot.img ${profile}/efiboot/loader/loader.conf ::/loader/"
     mcopy -i "${work_dir}/efiboot.img" "${profile}/efiboot/loader/loader.conf" ::/loader/
 
+    # 设置引导参数
+    cd -- "${airootfs_dir}/boot"
+    vmlinuz=$(basename -- $(find -maxdepth 1 -type f -name "vmlinuz-*"))
+    initramfs=$(basename -- $(find -maxdepth 1 -type f -name "initramfs-*-${arch}.img"))
+    cd -- ${OLDPWD}
+
     for _conf in "${profile}/efiboot/loader/entries/"*".conf"; do
-        _msg_info "sed s|%ARCHISO_LABEL%|${iso_label}|g;
+        _msg_info "sed s|%ISO_LABEL%|${iso_label}|g;
             s|%INSTALL_DIR%|${install_dir}|g;
+            s|%INSTALL_VMLINUZ%|${vmlinuz}|g;
+            s|%INSTALL_INITRAMFS%|${initramfs}|g
             s|%ARCH%|${arch}|g \
             ${_conf} | mcopy -i ${work_dir}/efiboot.img - ::/loader/entries/${_conf##*/}"
-        sed "s|%ARCHISO_LABEL%|${iso_label}|g;
-            s|%INSTALL_DIR%|${install_dir}|g;
+        sed "s|%ISO_LABEL%|${iso_label}|g;
+            s|%INSTALL_DIR%|${install_dir}|g; \
+            s|%INSTALL_VMLINUZ%|${vmlinuz}|g; \
+            s|%INSTALL_INITRAMFS%|${initramfs}|g; \
             s|%ARCH%|${arch}|g" \
             "${_conf}" | mcopy -i "${work_dir}/efiboot.img" - "::/loader/entries/${_conf##*/}"
     done
