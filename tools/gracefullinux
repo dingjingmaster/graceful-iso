@@ -73,7 +73,7 @@ _chroot_init()
     _msg_info "install -d -m 0755 -o 0 -g 0 -- ${airootfs_dir}"
     install -d -m 0755 -o 0 -g 0 -- "${airootfs_dir}"
     _msg_info "_pacman base syslinux"
-    _pacman base syslinux
+    _pacman base syslinux vim 
 }
 
 _chroot_run()
