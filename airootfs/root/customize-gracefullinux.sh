@@ -30,6 +30,7 @@ EOF
 
 # 设置默认以图形启动
 systemctl set-default graphical.target
+systemctl enable gdm.service
 
 
 sed -i "s/#Server/Server/g" /etc/pacman.d/mirrorlist
