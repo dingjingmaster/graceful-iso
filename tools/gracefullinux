@@ -405,7 +405,7 @@ _make_packages()
 
     _msg_info "_pacman ${pkg_list[@]}"
     _pacman "${pkg_list[@]}"
-    _pacman "syslinux calamares terminator vim"
+    _pacman syslinux calamares terminator vim
     if [[ -n "${gpg_key}" ]]; then
         _msg_info "exec {ISO_GNUPG_FD}<&-"
         exec {ISO_GNUPG_FD}<&-
