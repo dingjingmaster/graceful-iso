@@ -404,9 +404,8 @@ _make_packages()
     fi
 
     _msg_info "_pacman ${pkg_list[@]}"
-    _chroot_init
     _pacman "${pkg_list[@]}"
-    _pacman "calamares"
+    _pacman "syslinux calamares terminator vim"
     if [[ -n "${gpg_key}" ]]; then
         _msg_info "exec {ISO_GNUPG_FD}<&-"
         exec {ISO_GNUPG_FD}<&-
@@ -436,13 +435,13 @@ _make_customize_airootfs()
         _msg_info "完成!!!"
     fi
    
-    if [[ -e "${airootfs_dir}/root/customize_gracefullinux.sh" ]]; then
-        _msg_info "正在运行 customize_gracefullinux.sh '${airootfs_dir}' chroot..."
-        local run_cmd="/root/customize_gracefullinux.sh"
+    if [[ -e "${airootfs_dir}/root/customize-gracefullinux.sh" ]]; then
+        _msg_info "正在运行 customize-gracefullinux.sh '${airootfs_dir}' chroot..."
+        local run_cmd="/root/customize-gracefullinux.sh"
         _chroot_run
-        _msg_info "rm -- ${airootfs_dir}/root/customize_gracefullinux.sh"
-        rm -- "${airootfs_dir}/root/customize_gracefullinux.sh"
-        _msg_info "完成!!! customize_gracefullinux.sh 运行完成."
+        _msg_info "rm -- ${airootfs_dir}/root/customize-gracefullinux.sh"
+        rm -- "${airootfs_dir}/root/customize-gracefullinux.sh"
+        _msg_info "完成!!! customize-gracefullinux.sh 运行完成."
     fi
 }
 
@@ -1017,7 +1016,7 @@ _make_pkglist()
     _msg_info "install -d -m 0755 -- ${isofs_dir}/${install_dir}"
     install -d -m 0755 -- "${isofs_dir}/${install_dir}"
 
-    _msg_info "在 live 环境下安装软件包 ..."
+    _msg_info "在 live 环境下安装的软件包 ..."
     _msg_info "pacman -Q --sysroot ${airootfs_dir} > ${isofs_dir}/${install_dir}/pkglist.${arch}.txt"
     pacman -Q --sysroot "${airootfs_dir}" > "${isofs_dir}/${install_dir}/pkglist.${arch}.txt"
     _msg_info "完成!!!"
