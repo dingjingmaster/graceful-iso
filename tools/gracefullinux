@@ -53,6 +53,15 @@ _clean_space()
     _msg_warning "清除 ${work_dir}/out 镜像文件完成!!!"
 }
 
+_gnome_shell_plugin()
+{
+    _msg_info "开始添加gnome-shell-extension ..."
+    [[ -d "/home/dingjing/.local/share/gnome-shell/extensions" ]] \
+        && [[ -d "/usr/share/gnome-shell/extensions/" ]] \
+        && cp - Rb "/home/dingjing/.local/share/gnome-shell/extensions/*" "/usr/share/gnome-shell/extensions/"
+    _msg_info "开始添加gnome-shell-extension 完成!!!"
+}
+
 _local_package()
 {
     _msg_info "开始搜索本地缓冲的软件包 ..."
@@ -406,6 +415,7 @@ _make_packages()
     _msg_info "_pacman ${pkg_list[@]}"
     _pacman "${pkg_list[@]}"
     _pacman syslinux calamares terminator vim
+    _gnome_shell_plugin
     if [[ -n "${gpg_key}" ]]; then
         _msg_info "exec {ISO_GNUPG_FD}<&-"
         exec {ISO_GNUPG_FD}<&-
