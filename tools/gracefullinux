@@ -74,7 +74,7 @@ _chroot_init()
     _msg_info "install -d -m 0755 -o 0 -g 0 -- ${airootfs_dir}"
     install -d -m 0755 -o 0 -g 0 -- "${airootfs_dir}"
     _msg_info "_pacman base syslinux"
-    _pacman base syslinux vim 
+    _pacman base syslinux vim
     _msg_info "基础环境安装成功!!!"
 }
 
@@ -407,6 +407,7 @@ _make_packages()
     _msg_info "_pacman ${pkg_list[@]}"
     _chroot_init
     _pacman "${pkg_list[@]}"
+    _pacman "calamares"
     if [[ -n "${gpg_key}" ]]; then
         _msg_info "exec {ISO_GNUPG_FD}<&-"
         exec {ISO_GNUPG_FD}<&-
