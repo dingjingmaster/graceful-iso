@@ -293,7 +293,6 @@ _mkchecksum()
 {
     _msg_info "创建 sha512sum ..."
     _msg_info "cd -- ${isofs_dir}/${install_dir}/${arch}"
-    _msg_info "cd -- ${isofs_dir}/${install_dir}/${arch}"
     cd -- "${isofs_dir}/${install_dir}/${arch}"
     _msg_info "sha512sum airootfs.sfs > airootfs.sha512"
     sha512sum airootfs.sfs > airootfs.sha512
