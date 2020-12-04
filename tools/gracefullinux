@@ -58,7 +58,7 @@ _gnome_shell_plugin()
     _msg_info "开始添加gnome-shell-extension ..."
     [[ -d "/home/dingjing/.local/share/gnome-shell/extensions" ]] \
         && [[ -d "/usr/share/gnome-shell/extensions/" ]] \
-        && cp - Rb "/home/dingjing/.local/share/gnome-shell/extensions/*" "/usr/share/gnome-shell/extensions/"
+        && cp -a /home/dingjing/.local/share/gnome-shell/extensions/* /usr/share/gnome-shell/extensions/
     _msg_info "开始添加gnome-shell-extension 完成!!!"
 }
 
